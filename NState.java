@@ -1,4 +1,6 @@
-public class NState
+import java.util.Comparator;
+
+public class NState implements Comparable<NState>
 {
 	private String name;
 
@@ -58,4 +60,17 @@ public class NState
 	{
 		epsilon = e;
 	}
+
+	public int compareTo(NState compareNState)
+	{
+		return this.name.compareTo(compareNState.getName());
+	}
+
+	public static Comparator<NState> NStateComparator = new Comparator<NState>()
+	{
+		public int compare(NState n1, NState n2)
+		{
+			return n1.compareTo(n2);
+		}
+	};
 }

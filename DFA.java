@@ -63,14 +63,14 @@ public class DFA extends FA
 	* @param ArrayList<State> visited the list of already visited states (initially empty)
 	* @return true if state can be reached, else false
 	**/
-	public boolean isReachAble(State s, State current, ArrayList<State> visited)
+	public static boolean isReachable(State s, State current, ArrayList<State> visited, int machineSize)
 	{
 		if(current == s)
 		{
 			return true;
 		}
 
-		if(visited.size() >= machine.length)
+		if(visited.size() >= machineSize)
 		{
 			return false;
 		}
@@ -88,13 +88,13 @@ public class DFA extends FA
 			//check if a transition has already been visited
 			if(!visited.contains(current.getA()))
 			{
-				aValid = isReachAble(s, current.getA(), visited);
+				aValid = isReachable(s, current.getA(), visited, machineSize);
 			}
 
 			//check if b transition has already been visited
 			if(!visited.contains(current.getB()))
 			{
-				bValid = isReachAble(s, current.getB(), visited);
+				bValid = isReachable(s, current.getB(), visited, machineSize);
 			}
 
 			return aValid || bValid;
@@ -115,7 +115,7 @@ public class DFA extends FA
 		for(int y = 0; y < machine.length; y++)
 		{
 			ArrayList<State> visited = new ArrayList<State>();
-			if(isReachAble(getMachine()[y], getStart(), visited))
+			if(isReachable(getMachine()[y], getStart(), visited, machine.length))
 			{
 				updateMachine.add(machine[y]);
 			}
