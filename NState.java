@@ -23,11 +23,11 @@ public class NState implements Comparable<NState>
 
 	/**
 	* constructor for NState
-	* @param String name the name of the state
-	* @param NState[] a all 'a' transitions
-	* @param NState[] b all 'b' transitions
-	* @param NState[] epsilon all epsilon transitions
-	* @param boolean isAccept determines if this state is accepting or not
+	* @param name the name of the state
+	* @param a all 'a' transitions
+	* @param b all 'b' transitions
+	* @param epsilon all epsilon transitions
+	* @param isAccept determines if this state is accepting or not
 	**/
 	public NState(String name, NState[] a, NState[] b, NState[] epsilon, boolean isAccept)
 	{
@@ -36,6 +36,20 @@ public class NState implements Comparable<NState>
 		this.b = b; 
 		this.epsilon = epsilon;
 		this.isAccept = isAccept;
+		if(a == null)
+		{
+			this.a = new NState[0];
+		}
+
+		if(b == null)
+		{
+			this.b = new NState[0];
+		}
+
+		if(epsilon == null)
+		{
+			this.epsilon = new NState[0];
+		}
 	}
 
 	/**
@@ -88,7 +102,7 @@ public class NState implements Comparable<NState>
 
 	/**
 	* setA resets all 'a' transitions
-	* @param NState[] a the new a transitions
+	* @param a the new a transitions
 	**/
 	public void setA(NState[] a)
 	{
@@ -97,7 +111,7 @@ public class NState implements Comparable<NState>
 
 	/**
 	* setB resets all 'b' transitions
-	* @param NState[] b the new b transitions
+	* @param b the new b transitions
 	**/
 	public void setB(NState[] b)
 	{
@@ -106,17 +120,32 @@ public class NState implements Comparable<NState>
 
 	/**
 	* setEpsilon resets all 'epsilon' transitions
-	* @param NState[] e the new epsilon transitions
+	* @param e the new epsilon transitions
 	**/
 	public void setEpsilon(NState[] e)
 	{
 		epsilon = e;
 	}
 
+	public void setIsAccepting(boolean b)
+	{
+		isAccept = b;
+	}
+
+	public int hashCode()
+	{
+		return name.hashCode() + a.hashCode() + b.hashCode() + epsilon.hashCode();
+	}
+
+	public boolean equal(NState n)
+	{
+		return (n.getName().equals(name)) && (n.isAccepting() == isAccept) && (n.getA() == a) && (n.getB() == b) && (n.getEpsilon() == epsilon);
+	}
+
 	/**
 	* compareTo used by the NStateComparator class 
 	* to sort classes lexigraphically
-	* @param NState compareNState the state that
+	* @param compareNState the state that
 	* this state is being compared to
 	* @return positive value if this > compareNstate
 	*		  negative value if this < compareNstate
@@ -134,8 +163,8 @@ public class NState implements Comparable<NState>
 	{
 		/**
 		* compare used to compare two NStates
-		* @param NState n1 first state to compare
-		* @param NState n2 second state to compare
+		* @param n1 first state to compare
+		* @param n2 second state to compare
 		* @return positive value if n1 > n2
 		*		  negative value if n1 < n2
 		*		  otherwise 0

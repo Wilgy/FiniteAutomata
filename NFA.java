@@ -20,12 +20,14 @@ public class NFA
 	//character representing the 'b' transition
 	private char bTransition;
 
+	private ArrayList<NState> acceptStates;
+
 	/**
 	* constructor
-	* @param NState s the start state
-	* @param NState[] m arraay holding all states
-	* @param char a a transition
-	* @param char b b transition
+	* @param s the start state
+	* @param m arraay holding all states
+	* @param a a transition
+	* @param b b transition
 	**/
 	public NFA(NState s, NState[] m, char a, char b)
 	{
@@ -33,6 +35,14 @@ public class NFA
 		machine = m;
 		aTransition = a;
 		bTransition = b;
+		acceptStates = new ArrayList<NState>();
+		for(int i = 0; i < machine.length; i++)
+		{
+			if(machine[i].isAccepting())
+			{
+				acceptStates.add(machine[i]);
+			}
+		}
 	}
 
 	/**
@@ -71,11 +81,55 @@ public class NFA
 		return bTransition;
 	}
 
+	public ArrayList<NState> getAcceptStates()
+	{
+		return acceptStates;
+	}
+
+	public void addAcceptState(NState s)
+	{
+		acceptStates.add(s);
+	}
+
+	public void removeAcceptState(NState s)
+	{
+		acceptStates.remove(s);
+	}
+
+	public String toString()
+	{
+		String result = "NFA with start state: " + this.getStart().getName() + ":\n";
+		result += "------------------------------------------\n";
+
+		for(int i = 0; i < this.getMachine().length; i++)
+		{
+			result += "State: " + this.getMachine()[i].getName() + " Is accepting: " + this.getMachine()[i].isAccepting() + "\n";
+			result += "     A transitions: ";
+			for(int j = 0; j < this.getMachine()[i].getA().length; j++)
+			{
+				result += this.getMachine()[i].getA()[j].getName() + ", "; 
+			}
+			result += "\n";
+			result += "     B transitions: ";
+			for(int j = 0; j < this.getMachine()[i].getB().length; j++)
+			{
+				result += this.getMachine()[i].getB()[j].getName() + ", "; 
+			}
+			result += "\n";
+			result += "     Epsilon transitions: ";
+			for(int j = 0; j < this.getMachine()[i].getEpsilon().length; j++)
+			{
+				result += this.getMachine()[i].getEpsilon()[j].getName() + ", "; 
+			}
+			result += "\n";
+		}
+		return result;
+	}
 
 	/**
 	* inLanguage determines if the given string is accepted by this NFA
-	* @param String s the string being tested
-	* @param NState current the current state that we are at in the machine
+	* @param s the string being tested
+	* @param current the current state that we are at in the machine
 	* 						(will initially be at the start state)
 	* @return true if s is accepted, else false
 	**/
@@ -155,7 +209,7 @@ public class NFA
 		NState newStartState = start;
 		NState[] nssEpsilon = newStartState.getEpsilon();
 		HashSet<NState> newStartStateSet = new HashSet<NState>();
-		
+
 		//the set that represents our new start state
 		newStartStateSet.add(newStartState);
 		for(int i = 0; i < nssEpsilon.length; i++)
@@ -169,10 +223,20 @@ public class NFA
 		DFAmachine.add(nullState);
 		
 
+		ArrayList<NState> oldStartState = new ArrayList<NState>();
+		oldStartState.add(start);
+		ArrayList<NState> SSS = new ArrayList<NState>();
+		SSS.addAll(newStartStateSet);
+		
+		// System.out.println("SSS: " + SSS);
+		// if(SSS.get(0) instanceof NState)
+		// {
+		// 	System.out.println("Is a NState object");
+		// }
+
 		//add all states in power to DFAmachine and populate state map
 		for(ArrayList<NState> item : power)
 		{
-
 			Collections.sort(item, NState.NStateComparator);
 			//The null state
 			if(item.size() != 0)
@@ -192,8 +256,21 @@ public class NFA
 
 
 				State newState = new State(name, null, null, anyStateAccept);
-				stateMap.put(newState, item);
-				nstateMap.put(item, newState);
+				if(item.equals(oldStartState))
+				{
+					stateMap.put(newState, oldStartState);
+					nstateMap.put(oldStartState, newState);
+				}
+				else if(item.equals(SSS))
+				{
+					stateMap.put(newState, SSS);
+					nstateMap.put(SSS, newState);
+				}
+				else
+				{
+					stateMap.put(newState, item);
+					nstateMap.put(item, newState);	
+				}
 				DFAmachine.add(newState);
 			}
 
@@ -205,16 +282,14 @@ public class NFA
 			}
 		}
 
-		ArrayList<NState> SSS = new ArrayList<NState>();
-		SSS.addAll(newStartStateSet);
-		ArrayList<NState> oldStartState = new ArrayList<NState>();
-		oldStartState.add(start);
-		State finalStartState;
-
+		boolean flag = false;
+		State finalStartState = nstateMap.get(oldStartState);
 		//no epsilon transitions
 		if(oldStartState.size() == SSS.size())
 		{
+			Collections.sort(oldStartState, NState.NStateComparator);
 			finalStartState = nstateMap.get(oldStartState);
+			//System.out.println("finalStartSte is : " + finalStartState);
 		}
 
 		//there are epsilon transitions; update start state and
@@ -222,11 +297,35 @@ public class NFA
 		else
 		{
 			Collections.sort(SSS, NState.NStateComparator);
-			finalStartState = nstateMap.get(SSS);
+			Collections.sort(oldStartState, NState.NStateComparator);
+			System.out.println(oldStartState);
+			System.out.println(SSS);
+			if(SSS.equals(oldStartState))
+			{
+				//System.out.println("SSS does equal oldStartState");
+				finalStartState = nstateMap.get(oldStartState);	
+			}
+			else
+			{
+				flag = true;
+				System.out.println("SSS doe snot equal oldStartState " + nstateMap.get(SSS));
+				if(nstateMap.get(SSS) != null)
+				{
+					finalStartState = nstateMap.get(SSS);
+				}
+				else
+				{
+					finalStartState = nstateMap.get(oldStartState);
+				}
+				
+			}
+			//System.out.println("finalStartState is: " + finalStartState);
 			DFAmachine.remove(oldStartState.get(0));
 			nstateMap.remove(oldStartState);
 			stateMap.remove(oldStartState.get(0));
 		}
+
+		//System.out.println(flag);
 
 		//System.out.println("Start state: " + finalStartState.getName());
 		
@@ -305,7 +404,9 @@ public class NFA
 			System.out.println();
 			*/
 
-			//make all the connections
+			//make all the connections; if the state we are trying to get to is not in
+			//the map(i.e. a removed start state) we have this state point to the 
+			//null state
 			State stateATran = nstateMap.containsKey(a) ? nstateMap.get(a) : nullState;
 			State stateBTran = nstateMap.containsKey(b) ? nstateMap.get(b) : nullState;
 			s.setA(stateATran);
@@ -316,7 +417,16 @@ public class NFA
 		ArrayList<State> toRemove = new ArrayList<State>();
 		for(State r : DFAmachine)
 		{
-			if(!DFA.isReachable(r, finalStartState, new ArrayList<State>(), DFAmachine.size()))
+			ArrayList<State> visited = new ArrayList<State>();
+			if(r == null)
+			{
+				System.out.println("State we are checking is null");
+			}
+			if(finalStartState == null)
+			{
+				System.out.println("finalStartState we have is null");
+			}
+			if(!DFA.isReachable(r, finalStartState, visited, DFAmachine.size()))
 			{
 				toRemove.add(r);
 			}
@@ -400,7 +510,7 @@ public class NFA
 
 	/**
 	* main function used for testing
-	* @param String[] args command line arguments; unused
+	* @param args command line arguments; unused
 	**/
 	public static void main(String[] args)
 	{

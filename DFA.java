@@ -1,6 +1,7 @@
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Scanner;
+import java.util.HashMap;
 
 /**
 * Class that represents a Deterministic Finite Automata
@@ -12,21 +13,33 @@ public class DFA extends FA
 
 	/**
 	* constructor for DFA
-	* @param State s starting state for DFA 
-	* @param State[] m array holding all states
-	* @param char a character on a transition
-	* @param char b character on b transition
+	* @param s starting state for DFA 
+	* @param m array holding all states
+	* @param a character on a transition
+	* @param b character on b transition
 	**/
 	public DFA(State s, State[] m, char a, char b)
 	{
 		super(s, m, a, b);
 	}
 
+	public String toString()
+	{
+		String result = "DFA with start state: " + this.getStart().getName() + " :\n";
+			  result += "DFA number of states: " + this.getMachine().length + "\n";
+		result += "------------------------------------------\n";
+
+		for(int i = 0; i < this.getMachine().length; i++)
+		{
+			result += this.getMachine()[i].toString();
+		}
+		return result;
+	}
 
 	/**
 	* inLanguage determines if a certain string is in the language
-	* @param String s the string that is being tested
-	* @param State current the current state we are at in the machine
+	* @param s the string that is being tested
+	* @param current the current state we are at in the machine
 	* @return true if s is in language, else false
 	**/
 	public boolean inLanguage(String s, State current)
@@ -58,9 +71,9 @@ public class DFA extends FA
 
 	/**
 	* isReachable checks if a certain state is reachable from the start state
-	* @param State s the state that is being checked
-	* @param State current the current state we are at (starts at start state)
-	* @param ArrayList<State> visited the list of already visited states (initially empty)
+	* @param s the state that is being checked
+	* @param current the current state we are at (starts at start state)
+	* @param visited the list of already visited states (initially empty)
 	* @return true if state can be reached, else false
 	**/
 	public static boolean isReachable(State s, State current, ArrayList<State> visited, int machineSize)
@@ -301,8 +314,273 @@ public class DFA extends FA
 	}
 
 	/**
+	* getDFA takes a regular expression and converts it into a DFA
+	* @param regex the string to be converted
+	* @return a DFA that corresponds to the given regular expression
+	**/
+	public static DFA getDFA(String regex, char aTran, char bTran)
+	{
+		NFA result = getNFA(regex, 1, aTran, bTran);
+		//System.out.println(result.toString());
+		DFA convert = result.getDFA();
+		//convert.DFAMinimization();
+		return convert;
+	}
+
+
+	/**
+	* helper for getDFA that generates an NFA from the regular expression
+	* which will be converted into a DFA in getDFA
+	* @param regex the string to be converted
+	* @param nameIndex the names of the new states (initially start at 1)
+	* @return an NFA that represents the regular expression
+	**/
+	private static NFA getNFA(String regex, int nameIndex, char aTran, char bTran)
+	{
+		int index = 0;
+		int barLocation = conatainsUnnestedBar(regex);
+		//we have an empty string, we should return a single state NFA
+		if(regex.length() == 0)
+		{
+			NState s = new NState(Integer.toString(nameIndex), null, null, null, true);
+			NState[] m = {s};
+			return new NFA(s, m, 'a', 'b');
+		}
+
+		if(regex.charAt(index) == '(')
+		{
+			int parenCount = 0;
+			int rightParenIndex = 0;
+			boolean found = false;
+			for(int i = 0; i < regex.length(); i++)
+			{
+				if(regex.charAt(i) == '(')
+				{
+					parenCount++;
+				}
+
+				if(regex.charAt(i) == ')')
+				{
+					parenCount--;
+					if(parenCount == 0)
+					{
+						rightParenIndex = i;
+						found = true;
+					}
+				}
+
+				if(found)
+				{
+					break;
+				}
+			}
+
+			NFA right = getNFA(regex.substring(1, rightParenIndex), nameIndex, aTran, bTran);
+			index = rightParenIndex;
+
+			//this machine has a Kleene Star
+			if(regex.length() > rightParenIndex + 1 && regex.charAt(rightParenIndex+1) == '*')
+			{
+				right = kleeneStar(right, nameIndex);
+				//created a new state in kleeneStar, have to increment to the naming
+				nameIndex++;
+				index++;
+			
+			}
+
+			//we've eaten through the entire string at this point, return our result
+			if(index + 1 >= regex.length())
+			{
+				return right;
+			}
+
+			//there still is some of the regex to look through
+			else
+			{
+				return concat(right, getNFA(regex.substring(index + 1, regex.length()), nameIndex, aTran, bTran));
+			}
+		}
+
+		//there is no parenthesis to go into but there is a '|' found for union
+		else if(barLocation != -1)
+		{
+			NFA left = getNFA(regex.substring(0, barLocation), nameIndex, aTran, bTran);
+			NFA right = getNFA(regex.substring(barLocation + 1, regex.length()), nameIndex, aTran, bTran);
+
+			return union(left, right, nameIndex);
+
+		}
+
+		//first character is a vlid character that is to be concatenated onto our state machine
+		else
+		{
+			NState start = new NState(Integer.toString(nameIndex), null, null, null, false);
+			NState transition = new NState(Integer.toString(nameIndex + 1), null, null, null,true);
+			NState[] e = {transition};
+			nameIndex += 2;
+			if(regex.charAt(0) == aTran)
+			{
+				start.setA(e);
+			}
+
+			else
+			{
+				start.setB(e);
+			}
+
+			NState[] m = {start, transition};
+			NFA right = new NFA(start, m, aTran, bTran);
+
+			if(regex.length() > 1 && regex.charAt(1) == '*')
+			{
+				right = kleeneStar(right, nameIndex);
+				nameIndex++;
+				index++;
+			}
+
+			if(index + 1 >= regex.length())
+			{
+				return right;
+			}
+
+			else
+			{
+				return concat(right, getNFA(regex.substring(1, regex.length()), nameIndex, aTran, bTran));
+			}
+		}
+	}
+
+	/**
+	* determine if string contains a '|' that is not nested insode of any parens
+	* @param regex the string to search
+	* @return index of bar, or if none found -1
+	**/
+	private static int conatainsUnnestedBar(String regex)
+	{
+		int parenCount = 0;
+		for(int i = 0; i < regex.length(); i++)
+		{
+			if(regex.charAt(i) == '(')
+			{
+				parenCount++;
+			}
+
+			if(regex.charAt(i) == ')')
+			{
+				parenCount--;
+			}
+
+			if(regex.charAt(i) == '|' && parenCount == 0)
+			{
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	/**
+	* concats two NFA's together
+	* @param left the NFA on the left
+	* @param right the NFA on the right
+	* @return a concatenated NFA
+	**/
+	private static NFA concat(NFA left, NFA right)
+	{
+		//will point to the old accept states to the new non-accept in the new machine
+		HashMap oldAccept = new HashMap<NState, NState>();
+		NState newStart = left.getStart();
+		NState[] newMachine = new NState[left.getMachine().length + right.getMachine().length];
+		//Add all state from machine on the left
+		for(int i = 0; i < left.getMachine().length; i++)
+		{
+			NState currentState = left.getMachine()[i];
+			if(left.getAcceptStates().contains(currentState))
+			{
+				NState[] newEps = new NState[currentState.getEpsilon().length + 1];
+				for(int k = 0; k < currentState.getEpsilon().length; k++)
+				{
+					newEps[k] = currentState.getEpsilon()[k];
+				}
+				newEps[currentState.getEpsilon().length] = right.getStart();
+				currentState.setEpsilon(newEps);
+				currentState.setIsAccepting(false);
+			}
+
+			newMachine[i] = currentState;
+		}
+
+		for(int j = 0; j < right.getMachine().length; j++)
+		{
+			newMachine[j + left.getMachine().length] = right.getMachine()[j];
+		}
+
+		return new NFA(newStart, newMachine, left.getATransition(), left.getBTransition());
+
+	}
+
+	/**
+	* performs a kleene star operation on an NFA
+	* @param star the NFA to be kleene starred
+	* @param nameIndex the name to be given to the new start state
+	* @return a new NFA
+	**/
+	private static NFA kleeneStar(NFA star, int nameIndex)
+	{
+		NState newStart = new NState(Integer.toString(nameIndex), null, null, null, false);
+		NState[] newMachine = new NState[star.getMachine().length + 1];
+		star.getStart().setIsAccepting(true);
+		//need to add old start state to acceptStates in star
+		NState[] e = {star.getStart()};
+		newStart.setEpsilon(e);
+		for(NState n : star.getAcceptStates())
+		{
+			NState[] newEps = new NState[n.getEpsilon().length + 1];
+			for(int i = 0; i < n.getEpsilon().length; i++)
+			{
+				newEps[i] = n.getEpsilon()[i];
+			}
+			newEps[n.getEpsilon().length] = star.getStart();
+			n.setEpsilon(newEps);
+		}
+		star.addAcceptState(star.getStart());
+
+		for(int j = 0; j < star.getMachine().length; j++)
+		{
+			newMachine[j] = star.getMachine()[j];
+		}
+		newMachine[star.getMachine().length] = newStart;
+		return new NFA(newStart, newMachine, star.getATransition(), star.getBTransition());
+	}
+
+	/**
+	* performs a union operation on the two given NFA
+	* @param left one of the NFAs to be unioned
+	* @param right the other NFA
+	* @return the new NFA that is the union of the two 
+	**/
+	private static NFA union(NFA left, NFA right, int nameIndex)
+	{
+		NState newStart = new NState(Integer.toString(nameIndex), null,null,null, false);
+		NState[] e = {left.getStart(), right.getStart()};
+		newStart.setEpsilon(e);
+		NState[] newMachine = new NState[left.getMachine().length + right.getMachine().length + 1];
+		for(int i = 0; i < left.getMachine().length; i++)
+		{
+			newMachine[i] = left.getMachine()[i];
+		} 
+
+		for(int j = 0; j < right.getMachine().length; j++)
+		{
+			newMachine[j + left.getMachine().length] = right.getMachine()[j];
+		}
+		newMachine[left.getMachine().length + right.getMachine().length + 1] = newStart;
+		return new NFA(newStart, newMachine, left.getATransition(), left.getBTransition());
+	}
+
+	/**
 	* main used for testing
-	* @param String[] args command line arguments unused
+	* @param args command line arguments unused
 	**/
 	public static void main(String[] args)
 	{
@@ -332,6 +610,7 @@ public class DFA extends FA
 
 		DFA M = new DFA(A, machine1, 'a', 'b');
 
+		/*
 		for(State s : M.getMachine())
 		{
 			System.out.print(s.getName() + " ");	
@@ -354,6 +633,17 @@ public class DFA extends FA
 		{
 			System.out.println(test1[i] + " is in language: " + M.inLanguage(test1[i], M.getStart()));
 		}
+		*/
+
+		String[] test = {"a", "a*", "(a)", "(a)*", "ab", "ab*", "a|b", "(a|b)"};
+		DFA[] r = new DFA[test.length];
+		for(int i = 0; i < test.length; i++)
+		{
+			r[i] = getDFA(test[i], 'a', 'b');
+			System.out.println("TEST STRING:" + test[i]);
+			System.out.println(r[i].toString());
+		}
+
 
 	}
 }

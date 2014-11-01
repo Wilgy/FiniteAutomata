@@ -1,8 +1,14 @@
+import java.awt.*;
+import java.awt.event.*;
+import javax.swing.*;
+import javax.swing.border.*;
+
 /**
 * State class used by DFA.java to repreent a deterministic state
 **/
-public class State
+public class State extends JComponent
 {
+
 	//The name of this state
 	private String name;
 
@@ -17,9 +23,9 @@ public class State
 
 	/** 
 	* constructor for State
-	* @param String name name of the state
-	* @param State a the a transition 
-	* @param State b the b transition
+	* @param name name of the state
+	* @param a the a transition 
+	* @param b the b transition
 	* @param isAccept boolean whether this state is accepting or not
 	**/
 	public State(String name, State a, State b, boolean isAccept)
@@ -28,6 +34,7 @@ public class State
 		this.a = a;
 		this.b = b;
 		this.isAccept = isAccept;
+
 	}
 
 	/**
@@ -68,7 +75,7 @@ public class State
 
 	/**
 	* setA resets the a transition
-	* @param State s the new a transition
+	* @param s the new a transition
 	**/
 	public void setA(State s)
 	{
@@ -77,10 +84,30 @@ public class State
 
 	/**
 	* setB resets the b transition
-	* @param State s the new b transition
+	* @param s the new b transition
 	**/
 	public void setB(State s)
 	{
 		b = s;
 	}
+
+	public String toString()
+	{
+		String aName = "null";
+		String bName = "null";
+		if(a != null)
+		{
+			aName = a.getName();
+		}
+
+		if(b != null)
+		{
+			bName = b.getName();
+		}
+		String result = "State: " + this.getName() + " is accepting: " + isAccept + "\n";
+			  result += "	A transition: " + aName + "\n";
+			  result += "	B transition: " + bName + "\n";
+		return result;
+	}
+	
 }

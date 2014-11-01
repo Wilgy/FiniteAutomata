@@ -18,10 +18,10 @@ public abstract class FA
 
 	/**
 	* FA constructor
-	* @param State s start state
-	* @param State[] m array holding all states in machine
-	* @param char a character that moves on a transition
-	* @param char b character that moves on b transition
+	* @param s start state
+	* @param m array holding all states in machine
+	* @param a character that moves on a transition
+	* @param b character that moves on b transition
 	**/
 	public FA(State s, State[] m, char a, char b)
 	{
