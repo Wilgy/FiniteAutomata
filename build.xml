@@ -1,0 +1,12 @@
+<project name="FiniteAutomata" default="compile" basedir=".">
+
+	<property name="src.dir" value="./src"/>
+	<property name="build.dir" value="./bin"/>
+
+	<target name="compile">
+
+		<javac srcdir="${src.dir}" destdir="${build.dir}" includeantruntime="false"/>
+	
+	</target>
+
+</project>
