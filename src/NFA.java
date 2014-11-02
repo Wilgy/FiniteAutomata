@@ -193,6 +193,13 @@ public class NFA
 
 	/**
 	* getDFA takes this NFA and converts is to its corresponding DFA
+	* 
+	*
+	*
+	*
+	*
+	*
+	*
 	* @return the DFA that corresponds to this NFA
 	**/
 	public DFA getDFA()
