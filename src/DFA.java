@@ -2,6 +2,9 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
+
 
 /**
 * Class that represents a Deterministic Finite Automata
@@ -23,6 +26,11 @@ public class DFA extends FA
 		super(s, m, a, b);
 	}
 
+	/**
+	* returns a string representation of this DFA; includes the start state, 
+	* the number of states, and info about each state
+	* @return a string that represents the DFA
+	**/
 	public String toString()
 	{
 		String result = "DFA with start state: " + this.getStart().getName() + " :\n";
@@ -74,15 +82,19 @@ public class DFA extends FA
 	* @param s the state that is being checked
 	* @param current the current state we are at (starts at start state)
 	* @param visited the list of already visited states (initially empty)
+	* @param machineSize the total number of states in the machine
 	* @return true if state can be reached, else false
 	**/
 	public static boolean isReachable(State s, State current, ArrayList<State> visited, int machineSize)
 	{
+		//we've found the state we're looking for, return true
 		if(current == s)
 		{
 			return true;
 		}
 
+		//if we've visited every state machine and still haven't found our state,
+		//then is can't be reachable
 		if(visited.size() >= machineSize)
 		{
 			return false;
@@ -92,7 +104,8 @@ public class DFA extends FA
 		{
 			boolean aValid = false;
 			boolean bValid = false;
-			//check if current state has already been checked
+			//check if current state has already been checked, if so we do not 
+			//want to rechceck that state in later calls
 			if(!visited.contains(current))
 			{
 				visited.add(current);
@@ -116,31 +129,229 @@ public class DFA extends FA
 	}
 
 	/**
-	* DFAMinimization tries to reduce the total number of states
-	* that are contained in our machine by merging states that are 
-	* indistiguishable and roemovig states that are unreachable 
-	* by the start state.
+	* prints a 2d array of boolean values
+	* @param arr the array to print
 	**/
-	public void DFAMinimization()
+	public static void printAbstractArray(boolean[][] arr) 
 	{
-		//remove any unreachable states
+		for(int i = 0; i < arr.length; i++)
+		{
+			System.out.print("Row #" + i + ": [");
+			for(int j = 0; j < arr[i].length; j++ )
+			{
+				System.out.print(" " + arr[i][j] + ", ");
+			}
+			System.out.println("]");
+		}
+
+	}
+
+	/**
+	* removeUnreachableStates removes any unreachable states in a given state machine
+	* @param m the machine that is being searched for states that can be removed
+	* @param start the start state of the machine
+	* @return the new machine
+	**/
+	public static State[] removeUnreachableStates(State[] m, State start)
+	{
 		ArrayList<State> updateMachine = new ArrayList<State>();
-		for(int y = 0; y < machine.length; y++)
+		for(int y = 0; y < m.length; y++)
 		{
 			ArrayList<State> visited = new ArrayList<State>();
-			if(isReachable(getMachine()[y], getStart(), visited, machine.length))
+			if(isReachable(m[y], start, visited, m.length))
 			{
-				updateMachine.add(machine[y]);
+				updateMachine.add(m[y]);
 			}
 		}
 
-		if(machine.length != updateMachine.size())
+		if(m.length != updateMachine.size())
 		{
-			updateMachine.toArray(machine);
-			machine = Arrays.copyOf(machine, updateMachine.size());
+			updateMachine.toArray(m);
+			m = Arrays.copyOf(m, updateMachine.size());
+		}
+		return m;
+	}
+
+	/**
+	* grabs all states the make a transition to the state passed in
+	* @param m the machine of states
+	* @param s the state that is being transitioned to
+	* @return an ArrayList of States that make a transition to s
+	**/
+	private ArrayList<State> getStatesWithTransitions(State[] m, State s)
+	{
+		ArrayList<State> states = new ArrayList<State>();
+		for(int i = 0; i < m.length; i++)
+		{
+			State current = m[i];
+			//will ocmpare states by reference, not sure if this is a good idea (may want to use equals())
+			if(current.getA() == s || current.getB() == s)
+			{
+				states.add(current);
+			}
 		}
 
-		//create the initial distinguishability array
+		return states;
+	}
+
+
+	/**
+	* createDistinguishTable creates a 'table' of values where pairs of states 
+	* are mapped to a boolean value that represents whether or not those two 
+	* states are indistinguishable (FALSE) or distinguishable (TRUE)
+	* @param m the machine that we are used to generate the table (is unmodifed)
+	* @return the table of distinguishable states
+	**/
+	public static HashMap<State, HashMap<State, Boolean>> createDistinguishTable(State[] m)
+	{
+		HashMap<State, HashMap<State, Boolean>> isDistinguish = new HashMap<State, HashMap<State, Boolean>>();
+		//Create the initial map with all the values set to false	
+		for(int i = 0; i < m.length; i++)
+		{
+			State firstState = m[i];
+			isDistinguish.put(firstState, new HashMap<State, Boolean>());
+			for(int j = i + 1; j < m.length; j++)
+			{	
+				if(i != j)
+				{
+					State secondState = m[j];
+					isDistinguish.get(firstState).put(secondState, Boolean.FALSE);
+				}
+			}
+		}
+
+		Set<State> pairings = isDistinguish.keySet();
+		int numChanges = 0;
+		for(State firstState : pairings)
+		{
+			Set<State> pairedStates = isDistinguish.get(firstState).keySet();
+			for(State secondState : pairedStates)
+			{
+				//if one of the states is accepting and the other isnt, then they are
+				//consider distinguishable
+				if(firstState.isAccepting() != secondState.isAccepting())
+				{
+					isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
+
+					// System.out.println("Found a pair that are distinguishable in FIRST LOOP!");
+					// System.out.println(firstState.toString());
+					// System.out.println(secondState.toString());
+					numChanges++;
+				}
+			}
+		}
+
+		while(numChanges > 0)
+		{
+			numChanges = 0;
+			for(State firstState : pairings)
+			{
+				Set<State> pairedStates = isDistinguish.get(firstState).keySet();
+				for(State secondState : pairedStates)
+				{
+					if(isDistinguish.get(firstState).get(secondState) != Boolean.TRUE)
+					{
+						State currentA = firstState.getA();
+						State compareA = secondState.getA();
+
+						State currentB = firstState.getB();
+						State compareB = secondState.getB();
+
+						//If either (currentA, compareA) or (compareA, currentA) are in isDistinguish and
+						//have already been confirmed as distinguish, we need to set (firstState, secondState)
+						//pair as distinguished as well and increment the numChanges we have made to isDistinguish
+						if( isDistinguish.get(currentA) != null && isDistinguish.get(currentA).get(compareA) != null 
+							&& isDistinguish.get(currentA).get(compareA) == Boolean.TRUE)
+						{
+							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
+							numChanges++;
+						}
+
+						else if( isDistinguish.get(compareA) != null && isDistinguish.get(compareA).get(currentA) != null 
+							&& isDistinguish.get(compareA).get(currentA) == Boolean.TRUE)
+						{
+							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
+							numChanges++;
+						}
+
+						//Also need to check the (currentB, compareB) and (compareB, currentB) pairs as well
+						else if( isDistinguish.get(currentB) != null && isDistinguish.get(currentB).get(compareB) != null 
+							&& isDistinguish.get(currentB).get(compareB) == Boolean.TRUE)
+						{
+							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
+							numChanges++;
+						}
+
+						else if( isDistinguish.get(compareB) != null && isDistinguish.get(compareB).get(currentB) != null 
+							&& isDistinguish.get(compareB).get(currentB) == Boolean.TRUE)
+						{
+							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
+							numChanges++;
+						}
+					}
+				}
+			}
+		}
+
+		System.out.println("Distinguishability Table:");
+		for(State firstState : pairings)
+		{
+			Set<State> pairedStates = isDistinguish.get(firstState).keySet();
+			for(State secondState : pairedStates)
+			{
+				System.out.println("==================");
+				System.out.println(firstState.toString());
+				System.out.println(secondState.toString());
+				System.out.println("Are DISTINGUISHABLE: " + isDistinguish.get(firstState).get(secondState).toString());
+				System.out.println("==================");
+			}
+		}
+
+		return isDistinguish;
+	}
+
+	/**
+	* DFAMinimization tries to reduce the total number of states
+	* that are contained in our machine by merging states that are 
+	* indistiguishable and removing states that are unreachable 
+	* by the start state.
+	* Process:
+	* 	1. Remove all states that are unreachable from the start state
+	* 	2. For all pairs of states {p,q} such that p is accepting and q is not,
+	*	   mark the equivalent cell in the table (see below)
+	* 	3. Then consider each pair {p,q} that is not marked:
+			a. Determine r = d(p,a) and s = d(q,a) for each a in the alphabet
+			b. If {r,s} is marked in the table, then mark {p,q} in the table
+		4. Repeat step 3 until no further cells are marked during an entire iteration
+		   of an algorithm
+		5. Once the table is complete, all unmarked cells represent two states 
+		   that are indistinguishable (i.e equivalent)
+		   	a. Combine these equivalent states into a single state and make sure 
+		   	   their transitions map to the correct states
+	* 
+	* Example of table used for DFA minimization.  Let the DFA have states {A,B,C,D}
+	*    _
+	* B| _ | _
+	* C| _ | _ | _
+	* D| _ | _ | _ |
+	*    A   B   C
+	*
+	* NOTE: We assume that the DFA has at least 2 states
+	**/
+	public void DFAMinimization()
+	{
+		//we cannot do a minimization of a machine that only has one state
+		if(machine.length < 2)
+		{
+			return;
+		}
+
+		//Step 1. remove any unreachable states
+		machine = DFA.removeUnreachableStates(machine, getStart());
+
+		//HashMap<State, HashMap<State, Boolean>> isDistinguishNew = createDistinguishTable(machine);
+
+		//create the initial distinguishability array (the table)
 		boolean[][] isDistinguish = new boolean[machine.length - 1][];
 
 		//number of changes for each iteration
@@ -151,7 +362,9 @@ public class DFA extends FA
 			isDistinguish[x] = new boolean[machine.length - x - 1];
 		}
 
-		//set the initial accept states that are distinguished to true
+		//Step 2. set the initial accept states that are distinguished to true
+		//we mark each item in the table where one state is accepting and one is not
+		//therefore the two states must be distinguishable
 		for(int i = 0; i < machine.length - 1; i++)
 		{
 			State currentState = machine[i];
@@ -171,9 +384,10 @@ public class DFA extends FA
 			}
 		}
 
-		//determine which states are distinguishable and which are not
+		//Step 3 & 4. determine which states are distinguishable and which are not
 		while(numChanges > 0)
 		{
+
 			numChanges = 0;
 			for(int i = 0; i < machine.length - 1 ; i++)
 			{
@@ -191,20 +405,30 @@ public class DFA extends FA
 						State currentB = currentState.getB();
 						State compareB = machine[j].getB();
 
-						//this pair is distiguishable
-						if(currentA.isAccepting() != compareA.isAccepting())
+						//shouldn't we be checking the isDistinguish array if the cell 
+						//at currentA and compareA is marked true? the same for B
+
+						/*  This is using the base definition of distinguishiablity:
+							Two states {p,q} are said to be distinguishable if 
+							there is a string z such that
+							d(p,z) is an accepting state and d(q,z) is NOT accepting
+							or vice versa where d is the transition function */
+
+						//this pair is distiguishable since their A transitions are 
+						//different from each other
+						if((currentA != compareA) && (currentA.isAccepting() != compareA.isAccepting()))
 						{
 							isDistinguish[i][j - (i + 1)] = true;
 							numChanges++;
 						}
 
-						else if(currentB.isAccepting() != compareB.isAccepting())
+						//this pair is distinguishable since their B transitions are
+						//different from each other
+						else if((currentB != compareB) && (currentB.isAccepting() != compareB.isAccepting()))
 						{
 							isDistinguish[i][j - (i + 1)] = true;
 							numChanges++;
 						}
-
-
 					}
 				}
 			}
@@ -216,7 +440,7 @@ public class DFA extends FA
 		State[] newMachine = new State[machine.length];
 		int newIndex = 0;
 
-		//merge classes that are indistinguished
+		//Step 5. merge classes that are indistinguished
 		for(int i = 0; i < machine.length - 1; i++)
 		{
 			for(int j = i + 1; j < machine.length; j++)
@@ -314,13 +538,13 @@ public class DFA extends FA
 	}
 
 	/**
-	* getDFA takes a regular expression and converts it into a DFA
+	* getDFAFromRegex takes a regular expression and converts it into a DFA
 	* @param regex the string to be converted
 	* @return a DFA that corresponds to the given regular expression
 	**/
-	public static DFA getDFA(String regex, char aTran, char bTran)
+	public static DFA getDFAFromRegex(String regex, char aTran, char bTran)
 	{
-		NFA result = getNFA(regex, 1, aTran, bTran);
+		NFA result = getNFAFromRegex(regex, 1, aTran, bTran);
 		//System.out.println(result.toString());
 		DFA convert = result.getDFA();
 		//convert.DFAMinimization();
@@ -335,7 +559,7 @@ public class DFA extends FA
 	* @param nameIndex the names of the new states (initially start at 1)
 	* @return an NFA that represents the regular expression
 	**/
-	private static NFA getNFA(String regex, int nameIndex, char aTran, char bTran)
+	private static NFA getNFAFromRegex(String regex, int nameIndex, char aTran, char bTran)
 	{
 		int index = 0;
 		int barLocation = conatainsUnnestedBar(regex);
@@ -375,7 +599,7 @@ public class DFA extends FA
 				}
 			}
 
-			NFA right = getNFA(regex.substring(1, rightParenIndex), nameIndex, aTran, bTran);
+			NFA right = getNFAFromRegex(regex.substring(1, rightParenIndex), nameIndex, aTran, bTran);
 			index = rightParenIndex;
 
 			//this machine has a Kleene Star
@@ -397,21 +621,21 @@ public class DFA extends FA
 			//there still is some of the regex to look through
 			else
 			{
-				return concat(right, getNFA(regex.substring(index + 1, regex.length()), nameIndex, aTran, bTran));
+				return concat(right, getNFAFromRegex(regex.substring(index + 1, regex.length()), nameIndex, aTran, bTran));
 			}
 		}
 
 		//there is no parenthesis to go into but there is a '|' found for union
 		else if(barLocation != -1)
 		{
-			NFA left = getNFA(regex.substring(0, barLocation), nameIndex, aTran, bTran);
-			NFA right = getNFA(regex.substring(barLocation + 1, regex.length()), nameIndex, aTran, bTran);
+			NFA left = getNFAFromRegex(regex.substring(0, barLocation), nameIndex, aTran, bTran);
+			NFA right = getNFAFromRegex(regex.substring(barLocation + 1, regex.length()), nameIndex, aTran, bTran);
 
 			return union(left, right, nameIndex);
 
 		}
 
-		//first character is a vlid character that is to be concatenated onto our state machine
+		//first character is a valid character that is to be concatenated onto our state machine
 		else
 		{
 			NState start = new NState(Integer.toString(nameIndex), null, null, null, false);
@@ -445,7 +669,7 @@ public class DFA extends FA
 
 			else
 			{
-				return concat(right, getNFA(regex.substring(1, regex.length()), nameIndex, aTran, bTran));
+				return concat(right, getNFAFromRegex(regex.substring(1, regex.length()), nameIndex, aTran, bTran));
 			}
 		}
 	}
@@ -608,7 +832,22 @@ public class DFA extends FA
 
 		State[] machine1 = {A, B, C, D, E};
 
+		State[] m1 = {A, B};
+		State[] m2 = {B, A};
+		State[] m3 = {A, B};
+
+		Arrays.sort(m1);
+		Arrays.sort(m2);
+		Arrays.sort(m3);
+
+		System.out.println(Arrays.deepEquals(m1, m2));
+		System.out.println(Arrays.deepEquals(m1, m3));
+
 		DFA M = new DFA(A, machine1, 'a', 'b');
+
+		System.out.println(M.toString());
+
+		M.DFAMinimization();
 
 		/*
 		for(State s : M.getMachine())
@@ -635,14 +874,16 @@ public class DFA extends FA
 		}
 		*/
 
+		/*
 		String[] test = {"a", "a*", "(a)", "(a)*", "ab", "ab*", "a|b", "(a|b)"};
 		DFA[] r = new DFA[test.length];
 		for(int i = 0; i < test.length; i++)
 		{
-			r[i] = getDFA(test[i], 'a', 'b');
+			r[i] = getDFAFromRegex(test[i], 'a', 'b');
 			System.out.println("TEST STRING:" + test[i]);
 			System.out.println(r[i].toString());
 		}
+		*/
 
 
 	}

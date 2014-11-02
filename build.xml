@@ -2,11 +2,18 @@
 
 	<property name="src.dir" value="./src"/>
 	<property name="build.dir" value="./bin"/>
+	<property name="test.dir" value="./tests"/>
 
 	<target name="compile">
 
 		<javac srcdir="${src.dir}" destdir="${build.dir}" includeantruntime="false"/>
 	
+	</target>
+
+
+	<target name="test" depends="compile">
+		<javac srcdir="${test.dir}" destdir="${build.dir}" includeantruntime="false"/>
+		<java className="DFATest" classpath="${build.dir}" />
 	</target>
 
 </project>

@@ -67,6 +67,21 @@ public abstract class FA
 		return bTransition;
 	}
 
+	/**
+	* sets the start state to a new value
+	* @param s the new start state
+	**/
+	public void setStart(State s)
+	{
+		this.start = s;
+	}
+
+	/**
+	* inLanguage determines if string is in the language or not
+	* @param s the string that is being checked
+	* @param current that state that we are currently at in the machine (usually starts at the start state)
+	* @return true if the string is part of the language, otherwise false
+	**/
 	public boolean inLanguage(String s, State current)
 	{
 		return true;

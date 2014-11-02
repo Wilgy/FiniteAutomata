@@ -1,4 +1,5 @@
 import java.util.Comparator;
+import java.util.Arrays;
 
 /**
 * class NState used by NFA.java to represent a non-deterministic 
@@ -50,6 +51,10 @@ public class NState implements Comparable<NState>
 		{
 			this.epsilon = new NState[0];
 		}
+
+		Arrays.sort(this.a);
+		Arrays.sort(this.b);
+		Arrays.sort(this.epsilon);
 	}
 
 	/**
@@ -107,6 +112,7 @@ public class NState implements Comparable<NState>
 	public void setA(NState[] a)
 	{
 		this.a = a;
+		Arrays.sort(this.a);
 	}
 
 	/**
@@ -116,6 +122,7 @@ public class NState implements Comparable<NState>
 	public void setB(NState[] b)
 	{
 		this.b = b;
+		Arrays.sort(this.b);
 	}
 
 	/**
@@ -125,6 +132,7 @@ public class NState implements Comparable<NState>
 	public void setEpsilon(NState[] e)
 	{
 		epsilon = e;
+		Arrays.sort(this.epsilon);
 	}
 
 	public void setIsAccepting(boolean b)
@@ -137,9 +145,9 @@ public class NState implements Comparable<NState>
 		return name.hashCode() + a.hashCode() + b.hashCode() + epsilon.hashCode();
 	}
 
-	public boolean equal(NState n)
+	public boolean equals(NState n)
 	{
-		return (n.getName().equals(name)) && (n.isAccepting() == isAccept) && (n.getA() == a) && (n.getB() == b) && (n.getEpsilon() == epsilon);
+		return (n.getName().equals(name)) && (n.isAccepting() == isAccept) && Arrays.deepEquals(a, n.getA()) && Arrays.deepEquals(b, n.getB()) && Arrays.deepEquals(epsilon, n.getEpsilon());
 	}
 
 	/**
