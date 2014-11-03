@@ -178,12 +178,11 @@ public class DFA extends FA
 	* @param s the state that is being transitioned to
 	* @return an ArrayList of States that make a transition to s
 	**/
-	private ArrayList<State> getStatesWithTransitions(State[] m, State s)
+	private static ArrayList<State> getStatesWithTransitions(ArrayList<State> m, State s)
 	{
 		ArrayList<State> states = new ArrayList<State>();
-		for(int i = 0; i < m.length; i++)
+		for(State current : m)
 		{
-			State current = m[i];
 			//will ocmpare states by reference, not sure if this is a good idea (may want to use equals())
 			if(current.getA() == s || current.getB() == s)
 			{
@@ -249,7 +248,7 @@ public class DFA extends FA
 				Set<State> pairedStates = isDistinguish.get(firstState).keySet();
 				for(State secondState : pairedStates)
 				{
-					if(isDistinguish.get(firstState).get(secondState) != Boolean.TRUE)
+					if(!isDistinguish.get(firstState).get(secondState))
 					{
 						State currentA = firstState.getA();
 						State compareA = secondState.getA();
@@ -261,14 +260,14 @@ public class DFA extends FA
 						//have already been confirmed as distinguish, we need to set (firstState, secondState)
 						//pair as distinguished as well and increment the numChanges we have made to isDistinguish
 						if( isDistinguish.get(currentA) != null && isDistinguish.get(currentA).get(compareA) != null 
-							&& isDistinguish.get(currentA).get(compareA) == Boolean.TRUE)
+							&& isDistinguish.get(currentA).get(compareA) )
 						{
 							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
 							numChanges++;
 						}
 
 						else if( isDistinguish.get(compareA) != null && isDistinguish.get(compareA).get(currentA) != null 
-							&& isDistinguish.get(compareA).get(currentA) == Boolean.TRUE)
+							&& isDistinguish.get(compareA).get(currentA) )
 						{
 							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
 							numChanges++;
@@ -276,14 +275,14 @@ public class DFA extends FA
 
 						//Also need to check the (currentB, compareB) and (compareB, currentB) pairs as well
 						else if( isDistinguish.get(currentB) != null && isDistinguish.get(currentB).get(compareB) != null 
-							&& isDistinguish.get(currentB).get(compareB) == Boolean.TRUE)
+							&& isDistinguish.get(currentB).get(compareB) )
 						{
 							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
 							numChanges++;
 						}
 
 						else if( isDistinguish.get(compareB) != null && isDistinguish.get(compareB).get(currentB) != null 
-							&& isDistinguish.get(compareB).get(currentB) == Boolean.TRUE)
+							&& isDistinguish.get(compareB).get(currentB) )
 						{
 							isDistinguish.get(firstState).put(secondState, Boolean.TRUE);
 							numChanges++;
@@ -293,22 +292,161 @@ public class DFA extends FA
 			}
 		}
 
-		System.out.println("Distinguishability Table:");
+		return isDistinguish;
+	}
+
+	/**
+	* mergerIndistinguishableStates merges all states that are marked indistinguichable and generates a new DFA
+	* to represent the new (smaller) machine.
+	* @param m the old state machine
+	* @param isDistinguish the distinguishability table that holds the info on which states are indinstinguishable
+	* @param startState the old startState; if the old startState is merged with another state, we need to update it
+	* @param a the a transtion, used to generate a DFA
+	* @param b the b transtion, used to generate a DFA
+	* @return a new DFA that has merged all indistinguishable states
+	**/
+	private static DFA mergeIndistinguishableStates( State[] m, HashMap<State, HashMap<State, Boolean>> isDistinguish, State startState, char a, char b )
+	{
+		ArrayList<State> newMachine = new ArrayList<State>();
+		State newStartState = null;
+		Set<State> pairings = isDistinguish.keySet();
+
+		int newIndex = 0;
+
+		//first add all of the old states
+		for(int i = 0; i < m.length; i++)
+		{
+			newMachine.add(m[i]);
+			newIndex++;
+		}
+
+		HashMap<State, State> oldStatesToNewStates = new HashMap<State, State>();
+
+		//now, go through the disitinguishability table, and find the pairs of states that are
+		//indistinguishable.  Then merge the two states by doing the following:
+		// 		1. Create new state with merged name and correct acceptibilty
+		//		2. Find all of the old states that made a refrence to either of the states
+		//		3. Have these states transition point to the new state
+		//		4. Create the newStaes A nd B transitions
+		//			a. If the two states point to each other in some way, have the newState point to itself
+		//			b. If its not pointing to itself, it must be pointing to a similar state
+		//		5. Remove the old states from the newMachine.  We may have a problem where the isDistinguish 
+		//		   refers to states that have been removed and we may get bad data.
 		for(State firstState : pairings)
 		{
 			Set<State> pairedStates = isDistinguish.get(firstState).keySet();
-			for(State secondState : pairedStates)
+			for( State secondState : pairedStates)
 			{
-				System.out.println("==================");
-				System.out.println(firstState.toString());
-				System.out.println(secondState.toString());
-				System.out.println("Are DISTINGUISHABLE: " + isDistinguish.get(firstState).get(secondState).toString());
-				System.out.println("==================");
+				//if there not distinguishable, then firstState and secondState will need to be merged
+				if(!isDistinguish.get(firstState).get(secondState) )
+				{
+					//if the firstState or secondState refer to states that have been removed,
+					//we need to update what state they are talking about so as grab correct data
+					if(oldStatesToNewStates.get(firstState) != null)
+					{
+						firstState = oldStatesToNewStates.get(firstState);
+					}
+					if(oldStatesToNewStates.get(secondState) != null)
+					{
+						secondState = oldStatesToNewStates.get(secondState);
+					}
+
+					String newName = firstState.getName().compareTo(secondState.getName()) <= 0 ? firstState.getName() + secondState.getName() : secondState.getName() + firstState.getName();
+					State newState = new State(newName, null, null, (firstState.isAccepting() || secondState.isAccepting()));
+					if(firstState == startState || secondState == startState)
+					{
+						newStartState = newState;
+					}
+
+					oldStatesToNewStates.put(firstState, newState);
+					oldStatesToNewStates.put(secondState, newState);
+
+					State newStateA;
+					State newStateB;
+
+					//new state loops on a transtition
+					if( (firstState.getA() == secondState && secondState.getA() == firstState) || (firstState.getA() == firstState && secondState.getA() == secondState)
+						|| (firstState.getA() == secondState && secondState.getA() == secondState) || (firstState.getA() == firstState && secondState.getA() == firstState) )
+					{
+						newStateA = newState;
+					}
+
+					//both merge states point to some other similar state
+					else
+					{
+						newStateA = firstState.getA();
+					}
+
+					//new state loops on b transition
+					if( (firstState.getB() == secondState && secondState.getB() == firstState) || (firstState.getB() == firstState && secondState.getB() == secondState)
+						|| (firstState.getB() == secondState && secondState.getB() == secondState) || (firstState.getB() == firstState && secondState.getB() == firstState) )
+					{
+						newStateB = newState;
+					}
+
+					//both merge states point to some other similar state
+					else
+					{
+						newStateB = firstState.getB();
+					}
+
+					newState.setA(newStateA);
+					newState.setB(newStateB);
+
+
+					ArrayList<State> statesTransistionToFirst = getStatesWithTransitions(newMachine, firstState);
+					ArrayList<State> statesTransistionToSecond = getStatesWithTransitions(newMachine, secondState);
+
+					//rewrite the old state transitions for the firstState
+					for(State s : statesTransistionToFirst)
+					{
+						if(s.getA() == firstState)
+						{
+							s.setA(newState);
+						}
+						else
+						{
+							s.setB(newState);
+						}
+					}
+					//rewrite the old state transitions for the secondState
+					for(State s : statesTransistionToSecond)
+					{
+						if(s.getA() == firstState)
+						{
+							s.setA(newState);
+						}
+						else
+						{
+							s.setB(newState);
+						}
+					}
+
+					//add the new state to the newMachine and remove the old two states
+					newMachine.add(newState);
+					newMachine.remove(firstState);
+					newMachine.remove(secondState);
+					newIndex--;
+
+				}
 			}
 		}
 
-		return isDistinguish;
+		DFA newDFA;
+		State[] newMachineArr = new State[newMachine.size()];
+		if(newStartState != null)
+		{
+			newDFA = new DFA(newStartState, newMachine.toArray(newMachineArr), a, b);
+		}
+		else
+		{
+			newDFA = new DFA(startState, newMachine.toArray(newMachineArr), a, b);
+		}
+
+		return newDFA;
+
 	}
+
 
 	/**
 	* DFAMinimization tries to reduce the total number of states
@@ -349,192 +487,20 @@ public class DFA extends FA
 		//Step 1. remove any unreachable states
 		machine = DFA.removeUnreachableStates(machine, getStart());
 
-		//HashMap<State, HashMap<State, Boolean>> isDistinguishNew = createDistinguishTable(machine);
-
 		//create the initial distinguishability array (the table)
-		boolean[][] isDistinguish = new boolean[machine.length - 1][];
-
-		//number of changes for each iteration
-		int numChanges = 0;
-
-		for(int x = 0; x < machine.length - 1; x++)
-		{
-			isDistinguish[x] = new boolean[machine.length - x - 1];
-		}
-
 		//Step 2. set the initial accept states that are distinguished to true
 		//we mark each item in the table where one state is accepting and one is not
 		//therefore the two states must be distinguishable
-		for(int i = 0; i < machine.length - 1; i++)
-		{
-			State currentState = machine[i];
-
-			//assume that DFA has a size of at least two
-			for(int j = i + 1; j < machine.length; j++)
-			{
-				if(i != j)
-				{
-					if(currentState.isAccepting() != machine[j].isAccepting())
-					{
-						isDistinguish[i][j - (i + 1)] = true;
-						numChanges++;
-					}
-
-				}
-			}
-		}
-
 		//Step 3 & 4. determine which states are distinguishable and which are not
-		while(numChanges > 0)
-		{
+		HashMap<State, HashMap<State, Boolean>> isDistinguish = createDistinguishTable(machine);
 
-			numChanges = 0;
-			for(int i = 0; i < machine.length - 1 ; i++)
-			{
-				State currentState = machine[i];
+		//Step5. merge all indistinguishable states
+		DFA newDFA = mergeIndistinguishableStates(this.machine, isDistinguish, getStart(), getATransition(), getBTransition());
 
-				//assume that DFA has a size of at least two
-				for(int j = i + 1; j < machine.length; j++)
-				{
-					//make sure we haven't already set this node pair as distinguished
-					if(i != j && !isDistinguish[i][j - (i + 1)])
-					{
-						State currentA = currentState.getA();
-						State compareA = machine[j].getA();
-
-						State currentB = currentState.getB();
-						State compareB = machine[j].getB();
-
-						//shouldn't we be checking the isDistinguish array if the cell 
-						//at currentA and compareA is marked true? the same for B
-
-						/*  This is using the base definition of distinguishiablity:
-							Two states {p,q} are said to be distinguishable if 
-							there is a string z such that
-							d(p,z) is an accepting state and d(q,z) is NOT accepting
-							or vice versa where d is the transition function */
-
-						//this pair is distiguishable since their A transitions are 
-						//different from each other
-						if((currentA != compareA) && (currentA.isAccepting() != compareA.isAccepting()))
-						{
-							isDistinguish[i][j - (i + 1)] = true;
-							numChanges++;
-						}
-
-						//this pair is distinguishable since their B transitions are
-						//different from each other
-						else if((currentB != compareB) && (currentB.isAccepting() != compareB.isAccepting()))
-						{
-							isDistinguish[i][j - (i + 1)] = true;
-							numChanges++;
-						}
-					}
-				}
-			}
-		}
-
-		State[] mergeStates = new State[2*machine.length];
-		int mergeIndex = 0;
-
-		State[] newMachine = new State[machine.length];
-		int newIndex = 0;
-
-		//Step 5. merge classes that are indistinguished
-		for(int i = 0; i < machine.length - 1; i++)
-		{
-			for(int j = i + 1; j < machine.length; j++)
-			{
-				if(!isDistinguish[i][j - (i + 1)])
-				{
-					State mergeState1 = machine[i];
-					State mergeState2 = machine[j];
-
-					State newState = new State(mergeState1.getName() + mergeState2.getName(), 
-						null, null, mergeState1.isAccepting());
-
-					State newStateA;
-					State newStateB;
-
-					//new state loops on a transtition
-					if(mergeState1.getA() == mergeState2 && mergeState2.getA() == mergeState1)
-					{
-						newStateA = newState;
-					}
-
-					//both merge states point to some other similar state
-					else
-					{
-						newStateA = mergeState1.getA();
-					}
-
-					//new state loops on b transition
-					if(mergeState1.getB() == mergeState2 && mergeState2.getB() == mergeState1)
-					{
-						newStateB = newState;
-					}
-
-					//both merge states point to some other similar state
-					else
-					{
-						newStateB = mergeState1.getB();
-					}
-
-					newState.setA(newStateA);
-					newState.setB(newStateB);
-
-
-					mergeStates[mergeIndex] = mergeState1;
-					mergeStates[mergeIndex+1] = mergeState2;
-					newMachine[newIndex] = newState;
-					mergeIndex+=2;
-					newIndex++;
-
-					//have old states in machine point to newState when they point to mergeState 1 or 2
-					for(int x = 0; x < machine.length; x++)
-					{
-						State currentUpdateState = machine[x];
-						if(currentUpdateState.getA() == mergeState1 || currentUpdateState.getA() == mergeState2)
-						{
-							currentUpdateState.setA(newState);
-						}
-
-						if(currentUpdateState.getB() == mergeState1 || currentUpdateState.getB() == mergeState2)
-						{
-							currentUpdateState.setB(newState);
-						}
-					}
-
-				}
-			}
-		}
-
-		if(mergeStates.length != 0)
-		{
-			//remove old 'merged' states
-			for(int x = 0; x < machine.length; x++)
-			{
-				boolean found = false;
-				State currentState;
-				for(int y = 0; y < mergeStates.length; y++)
-				{
-					currentState = mergeStates[y];
-					if(machine[x] == mergeStates[y])
-					{
-						found = true;
-						break;
-					}
-				}
-
-				if(!found)
-				{
-					newMachine[newIndex] = machine[x];
-					newIndex++;
-				}
-			}
-			this.machine = Arrays.copyOf(newMachine, newIndex);	
-		}
-		
+		//update the machine
+		this.machine = newDFA.getMachine();
+		//update the start state
+		this.setStart(newDFA.getStart());
 	}
 
 	/**
