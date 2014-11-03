@@ -68,6 +68,23 @@ public abstract class FA
 	}
 
 	/**
+	* getState returns the state in the machine that has a name matching the name passed in
+	* @param stateName the name of the state that will be returned
+	* @return the State with the same name as state name, otherwise null
+	**/
+	public State getState(String stateName)
+	{
+		for(int i = 0; i < machine.length; i++)
+		{
+			if(machine[i].getName().equals(stateName))
+			{
+				return machine[i];
+			}
+		}
+		return null;
+	}
+
+	/**
 	* sets the start state to a new value
 	* @param s the new start state
 	**/
