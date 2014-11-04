@@ -16,4 +16,10 @@
 		<java className="DFATest" classpath="${build.dir}" />
 	</target>
 
+	<target name="clean" >
+		<delete>
+			<fileset dir="${build.dir}" includes="*.class" />
+		</delete>
+	</target>
+
 </project>

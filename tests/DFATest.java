@@ -355,8 +355,8 @@ public class DFATest
 	public static boolean testInLanguage2()
 	{
 		DFA DFA2Minimized = getDFA2Minimized();
-		String[] inTheLanguage = {"a", "aa", "ab", "aaa", "aab", "aab", "aba", "abb", "abba", "aaaa"};
-		String[] notInLanguage = {"", "b", "ba", "bb", "baa", "bab", "bba", "bbb", "baaa", "baab"};
+		String[] inTheLanguage = {"ab", "ba", "aabab", "abaab", "abb", "baaba", "bbabba", "aaaabab", "abbbb", "babbb"};
+		String[] notInLanguage = {"", "b", "a", "aa", "bb", "bba", "bbb", "baa", "babba", "bbbb"};
 		boolean result = true;
 
 		for(int i = 0; i < inTheLanguage.length; i++)
@@ -371,6 +371,7 @@ public class DFATest
 	{
 		System.out.println("Running DFATest....");
 		System.out.println("	DFATest.testInLanguage1: " + testInLanguage1());
+		System.out.println("	DFATest.testInLanguage2: " + testInLanguage2());
 		System.out.println("	DFATest.testCreateDistinguishTable1: " + testCreateDistinguishTable1());
 		System.out.println("	DFATest.testCreateDistinguishTable2: " + testCreateDistinguishTable2());
 		System.out.println("	DFATest.testCreateDistinguishTable3: " + testCreateDistinguishTable3());		
