@@ -14,6 +14,7 @@
 	<target name="test" depends="compile">
 		<javac srcdir="${test.dir}" destdir="${build.dir}" includeantruntime="false"/>
 		<java className="DFATest" classpath="${build.dir}" />
+		<java className="NFATest" classpath="${build.dir}" />
 	</target>
 
 	<target name="clean" >

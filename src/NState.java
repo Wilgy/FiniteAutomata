@@ -142,7 +142,12 @@ public class NState implements Comparable<NState>
 
 	public int hashCode()
 	{
-		return name.hashCode() + a.hashCode() + b.hashCode() + epsilon.hashCode();
+		int hash=7;
+		for (int i=0; i < name.length(); i++) 
+		{
+    		hash = hash * 31 + name.charAt(i);
+		}
+		return hash;
 	}
 
 	public boolean equals(NState n)
